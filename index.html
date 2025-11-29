@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>黄小越的识字本 - 学前快读600字</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&display=swap');
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: #fdf6e3; /* 护眼米色背景 */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            height: 100dvh; /* 移动端动态高度适配 */
+            overflow: hidden; /* 防止整体滚动 */
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-hand {
+            font-family: 'ZCOOL KuaiLe', cursive;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(136, 136, 136, 0.3); 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(136, 136, 136, 0.6); 
+        }
+
+        .tian-zi-ge {
+            background-color: white;
+            background-image: 
+                linear-gradient(to right, #e53e3e 1px, transparent 1px),
+                linear-gradient(to bottom, #e53e3e 1px, transparent 1px),
+                linear-gradient(to right, rgba(229, 62, 62, 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(229, 62, 62, 0.3) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 50% 50%, 50% 50%;
+            background-position: center;
+            position: relative;
+            border: 2px solid #e53e3e;
+            box-sizing: border-box;
+            transition: transform 0.1s, width 0.3s, height 0.3s;
+            touch-action: none; /* 关键：防止触摸时滚动页面 */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 修复田字格边框和内部虚线 */
+        .tian-zi-ge::after {
+             content: '';
+             position: absolute;
+             top: 50%; left: 0; width: 100%; height: 1px;
+             background-color: transparent;
+             border-top: 1px dashed rgba(229, 62, 62, 0.5);
+             transform: translateY(-50%);
+             z-index: 0;
+             pointer-events: none;
+        }
+        
+        .tian-zi-ge-v-line {
+             position: absolute;
+             left: 50%; top: 0; height: 100%; width: 1px;
+             background-color: transparent;
+             border-left: 1px dashed rgba(229, 62, 62, 0.5);
+             transform: translateX(-50%);
+             z-index: 0;
+             pointer-events: none;
+        }
+
+        /* 错误震动动画 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px) rotate(-1deg); }
+            50% { transform: translateX(5px) rotate(1deg); }
+            75% { transform: translateX(-5px) rotate(-1deg); }
+            100% { transform: translateX(0); }
+        }
+        .animate-shake {
+            animation: shake 0.4s ease-in-out;
+            border-color: #f56565 !important; /* 红色边框 */
+        }
+
+        /* 正确闪烁动画 */
+        @keyframes success-flash {
+            0% { background-color: white; }
+            50% { background-color: #def7ec; } /* 浅绿色 */
+            100% { background-color: white; }
+        }
+        .animate-success {
+            animation: success-flash 0.5s ease-out;
+            border-color: #48bb78 !important; /* 绿色边框 */
+        }
+
+        .char-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .char-card:active {
+            transform: scale(0.95);
+            background-color: #fff7ed;
+        }
+        
+        /* 动画淡入 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* 移动端优化按钮点击态 */
+        button:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 原始数据 - 包含了用户上传的所有内容
+        const RAW_DATA = `
+1-01我的家
+我的家有六口人爸妈爷奶妹和爱还小大也
+
+1-02去公园
+去公园边上一个天玩草花树沙土水
+
+1-03下雨天
+下雨了从落来出们都很高兴
+
+1-04春风
+春风吹枝长芽地绿到头暖发飘啊
+
+1-05小马找妈妈
+马找是快乐翻过山走河定好
+
+1-06过家家
+弟当布娃孩子不会喝只喂
+
+1-07草娃娃
+买回每给它浇放在太阳色像真
+
+1-08好朋友
+朋友森林里住着兔羊牛三吃青
+
+1-09一去二三里
+二烟村四五亭台七座八九十
+
+2-01一起玩
+起早晨带萝卜说喜欢又红苹果光
+
+2-02青蛙
+蛙张嘴两眼睛条腿扑通声跳
+
+2-03故乡
+故乡北京秋美丽香那叶同看
+
+2-04很黑很黑
+黑片田野房床面毛巾什么呢
+
+2-05小鱼游
+鱼游金摇尾巴点开吐许多球儿
+
+2-06宝宝画画
+宝画手巧鸭燕飞跑猫叫吓
+
+2-07盖新房
+盖新帮忙提扛得漂亮进门原忘窗
+
+2-08小宝宝
+睁哈笑伸要抱东瞧西鸟
+
+2-09海边
+海拿把铲用挖洞涌便消失
+
+2-10儿歌
+歌老虎少群鸡数记牢
+
+2-11下雪了
+雪冬变成白动物捡报纸皮做
+
+2-12猜谜语
+猜谜语石板挂明灯问无清
+
+3-01纸飞机
+机折向最后停电视前伞桌旁狗
+
+3-02儿歌
+月篮听讲猴捞他捉迷藏
+
+3-03黑熊过桥
+熊桥就站稳立心乱岸见直呀对怕
+
+3-04比一比
+比哪积木摆圆形涂组竹方棵菜重轻星黄
+
+3-05鸭妈妈的房子
+今些她哭伤生再几间没吧想外种这现
+
+3-06有趣的汉字
+趣汉字尖日鲜李泉禾弓火灭休众
+
+3-07拔萝卜
+拔越拉喊婆姑娘鼠力啦抬味
+
+3-08排第几位
+排第位仔细然答题左蛇松鹅右袋蜜蜂昆虫
+
+3-09猴子和狗熊
+桃流拍干可掉你冷采束艳跟坐晚
+
+3-10你知道吗
+知道吗时因为营养低约千克体睡觉象
+
+3-11把秋天带回家
+彩颜各状差万别平凡却奇妙完全相慢选感更
+
+3-12开学了
+学送校候分但师教室自己课以书包笔尺闻情
+
+4-01老鼠嫁女儿
+嫁女世界伟谁话先云被挡远遇墙
+
+4-02朵朵等下雪
+朵等急往才或夜中午饭爬路厚如堆刚醒切
+
+4-03小兔子不见了
+夏岁绒穿格衣服搂软处怎正幼总脚碰
+
+4-04蒲公英
+蒲英经常顶根深扎吸引蝴蝶其助传粉散
+
+4-05松鼠的尾巴
+活较特身挺米本领逃降样使让受
+
+4-06忘了说“我爱你”
+关件事块麦熟始专收粒背悄近气追安
+
+4-07彩虹
+虹照射空滴反造晴量至内橙蓝紫由而角度管
+
+4-08小熊过生日
+蛋糕谢礼客请准备肉骨盘捆苗虾碗玉唱
+
+4-09你的骨头
+胸脊脑耳保护脏摸肋硬随部所年
+
+4-10云
+艺术品景汽车浮强灰乌预测将傍则代表朗
+
+4-11爷爷喜欢修机器
+修器拖钟坪割油桶加坏拆扶刀亲脸
+
+4-12奇妙的水
+命之源需植类透影响倒温态零结冰固液烧蒸化
+`;
+
+        // 解析数据的工具函数
+        function parseData(rawData) {
+            const lines = rawData.trim().split('\n');
+            const lessons = [];
+            let currentLesson = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                if (!currentLesson) {
+                    currentLesson = { title: line, chars: [] };
+                } else {
+                    const cleanChars = line.replace(/[^\u4e00-\u9fa5]/g, '').split('');
+                    if (cleanChars.length > 0) {
+                        currentLesson.chars = [...new Set(cleanChars)];
+                        lessons.push(currentLesson);
+                        currentLesson = null;
+                    }
+                }
+            }
+            return lessons;
+        }
+
+        const LESSONS = parseData(RAW_DATA);
+
+        // HanziWriter 组件
+        const HanziWriterComponent = ({ char, mode = 'animate', onComplete }) => {
+            const writerRef = React.useRef(null);
+            const containerRef = React.useRef(null);
+            const wrapperRef = React.useRef(null); // 用于测量可用空间的包裹器
+            const [size, setSize] = React.useState(300); // 响应式尺寸
+            const [isLoading, setIsLoading] = React.useState(true);
+            const [error, setError] = React.useState(null);
+            const [feedbackState, setFeedbackState] = React.useState(null);
+
+            // 语音朗读功能
+            const speak = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text || char);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.8; 
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            // 智能尺寸计算
+            React.useEffect(() => {
+                const updateSize = () => {
+                    if (wrapperRef.current) {
+                        // 获取父容器宽度
+                        const parentWidth = wrapperRef.current.clientWidth;
+                        // 获取窗口高度，减去其他 UI 元素的大致高度（Header + Buttons + Padding）
+                        // 手机横屏时高度很小，需要特别处理
+                        const maxHeight = window.innerHeight - (window.innerWidth < 768 ? 140 : 240);
+                        
+                        // 计算正方形尺寸：不超过父宽，不超过最大高度，且最大限制为 320 (大屏) / 280 (小屏)
+                        const maxLimit = window.innerWidth < 400 ? 260 : 360;
+                        const newSize = Math.min(parentWidth, maxHeight, maxLimit);
+                        
+                        // 保证最小尺寸，避免看不清
+                        setSize(Math.max(newSize, 200));
+                    }
+                };
+
+                updateSize(); // 初始计算
+                window.addEventListener('resize', updateSize);
+                return () => window.removeEventListener('resize', updateSize);
+            }, []);
+
+            // 初始化 Writer
+            React.useEffect(() => {
+                if (!containerRef.current) return;
+                
+                setIsLoading(true);
+                setError(null);
+                containerRef.current.innerHTML = '';
+                
+                const vLine = document.createElement('div');
+                vLine.className = 'tian-zi-ge-v-line';
+                containerRef.current.appendChild(vLine);
+
+                try {
+                    const writer = HanziWriter.create(containerRef.current, char, {
+                        width: size,
+                        height: size,
+                        padding: size * 0.08, // 动态内边距
+                        showOutline: true,
+                        strokeAnimationSpeed: 1, 
+                        delayBetweenStrokes: 200, 
+                        strokeColor: '#333333',
+                        radicalColor: '#168F16',
+                        charDataLoader: (char, onComplete) => {
+                            fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
+                                .then(res => {
+                                    if (!res.ok) throw new Error('Network error');
+                                    return res.json();
+                                })
+                                .then(data => {
+                                    setIsLoading(false);
+                                    onComplete(data);
+                                })
+                                .catch(err => {
+                                    console.error("Loading char data failed", err);
+                                    setIsLoading(false);
+                                    setError("加载失败");
+                                });
+                        }
+                    });
+
+                    writerRef.current = writer;
+                } catch (e) {
+                    console.error(e);
+                    setError("初始化失败");
+                }
+            }, [char, size]); // size 变化也会重新初始化
+
+            // 监听模式变化和 writer 实例
+            React.useEffect(() => {
+                if (writerRef.current && !isLoading && !error) {
+                    if (mode === 'animate') {
+                        try { writerRef.current.cancelQuiz(); } catch (e) {}
+                        writerRef.current.showOutline(); 
+                        writerRef.current.loopCharacterAnimation();
+                    } else if (mode === 'quiz') {
+                        writerRef.current.showOutline(); 
+                        writerRef.current.quiz({
+                            acceptBackwardsStrokes: true, 
+                            lenience: 3, 
+                            drawingWidth: size * 0.15, // 动态笔触粗细
+                            
+                            showHintAfterMisses: 1, 
+                            onMistake: function(strokeData) {
+                                setFeedbackState('error');
+                                setTimeout(() => setFeedbackState(null), 400);
+                            },
+                            onCorrectStroke: function(strokeData) {
+                                setFeedbackState('correct');
+                                setTimeout(() => setFeedbackState(null), 500);
+                            },
+                            onComplete: function(summaryData) {
+                                if(onComplete) onComplete();
+                                speak("太棒了！");
+                            }
+                        });
+                    }
+                }
+            }, [mode, isLoading, error, char, size]);
+
+            const handleContainerClick = () => {
+                if(writerRef.current && mode === 'animate') {
+                    speak();
+                    writerRef.current.animateCharacter();
+                }
+            }
+
+            const handleRestartQuiz = (e) => {
+                e.stopPropagation();
+                if(writerRef.current && mode === 'quiz') {
+                     writerRef.current.quiz({
+                            acceptBackwardsStrokes: true, 
+                            lenience: 3, 
+                            drawingWidth: size * 0.15,
+                            showHintAfterMisses: 1, 
+                            onMistake: function() {
+                                setFeedbackState('error');
+                                setTimeout(() => setFeedbackState(null), 400);
+                            },
+                            onCorrectStroke: function() {
+                                setFeedbackState('correct');
+                                setTimeout(() => setFeedbackState(null), 500);
+                            },
+                            onComplete: function() {
+                                if(onComplete) onComplete();
+                                speak("太棒了！");
+                            }
+                    });
+                }
+            }
+
+            const containerClass = `tian-zi-ge shadow-lg rounded-xl relative
+                ${feedbackState === 'error' ? 'animate-shake' : ''}
+                ${feedbackState === 'correct' ? 'animate-success' : ''}
+            `;
+
+            return (
+                <div ref={wrapperRef} className="flex flex-col items-center justify-center w-full h-full select-none">
+                   <div 
+                        className={containerClass}
+                        style={{width: size, height: size}}
+                        onClick={handleContainerClick}
+                   >
+                       <div ref={containerRef} className="w-full h-full relative z-10"></div>
+                       {isLoading && (
+                           <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/50 rounded-xl">
+                               <span className="text-gray-500 animate-pulse">加载中...</span>
+                           </div>
+                       )}
+                       {error && (
+                           <div className="absolute inset-0 flex items-center justify-center z-20 bg-white/80 rounded-xl">
+                               <span className="text-red-500 text-sm">暂无数据</span>
+                           </div>
+                       )}
+                       
+                       {/* 反馈图标 */}
+                       {feedbackState === 'correct' && (
+                           <div className="absolute top-2 right-2 text-green-500 text-3xl animate-bounce z-20 pointer-events-none drop-shadow-sm">✔</div>
+                       )}
+                       {feedbackState === 'error' && (
+                           <div className="absolute top-2 right-2 text-red-500 text-3xl animate-pulse z-20 pointer-events-none drop-shadow-sm">✕</div>
+                       )}
+                   </div>
+                   
+                   <div className="flex gap-4 mt-6">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                speak();
+                            }}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 active:scale-95 transition-all shadow-sm"
+                        >
+                            <span className="text-xl">🔊</span>
+                            <span className="font-bold">听发音</span>
+                        </button>
+                        
+                        {mode === 'quiz' && (
+                            <button 
+                                onClick={handleRestartQuiz}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 active:scale-95 transition-all shadow-sm"
+                            >
+                                <span className="text-xl">🔄</span>
+                                <span className="font-bold">重写</span>
+                            </button>
+                        )}
+                   </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [currentLessonIndex, setCurrentLessonIndex] = React.useState(0);
+            const [selectedChar, setSelectedChar] = React.useState(null);
+            const [mode, setMode] = React.useState('animate'); 
+            const [sidebarOpen, setSidebarOpen] = React.useState(true); 
+
+            const currentLesson = LESSONS[currentLessonIndex];
+
+            React.useEffect(() => {
+                setSelectedChar(null);
+            }, [currentLessonIndex]);
+
+            // 移动端自动收起侧边栏
+            React.useEffect(() => {
+                const handleResize = () => {
+                    if (window.innerWidth < 1024) { // 平板竖屏以下自动收起
+                        setSidebarOpen(false);
+                    } else {
+                        setSidebarOpen(true);
+                    }
+                };
+                handleResize(); // 初始检查
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+
+            return (
+                <div className="flex h-full w-full overflow-hidden bg-yellow-50 text-gray-800">
+                    {/* 遮罩层 (移动端侧边栏打开时显示) */}
+                    <div 
+                        className={`fixed inset-0 bg-black/50 z-20 transition-opacity lg:hidden ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                        onClick={() => setSidebarOpen(false)}
+                    ></div>
+
+                    {/* 侧边栏：课程列表 */}
+                    <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:relative w-64 h-full bg-white shadow-xl flex flex-col z-30 transition-transform duration-300 border-r border-orange-100`}>
+                        <div className="p-4 bg-orange-500 text-white font-hand text-xl text-center shadow-md flex justify-between items-center shrink-0">
+                            <span>📚 课程表</span>
+                            <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white hover:bg-orange-600 rounded p-1">✕</button>
+                        </div>
+                        <div className="overflow-y-auto flex-1 p-2 scrollbar-thin">
+                            {LESSONS.map((lesson, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        setCurrentLessonIndex(idx);
+                                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                                    }}
+                                    className={`w-full text-left p-3 mb-2 rounded-lg transition-all flex items-center justify-between group
+                                        ${currentLessonIndex === idx 
+                                            ? 'bg-orange-100 text-orange-700 font-bold border-l-4 border-orange-500 shadow-sm' 
+                                            : 'hover:bg-gray-50 text-gray-600'}`}
+                                >
+                                    <span className="truncate font-medium">{lesson.title}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${currentLessonIndex === idx ? 'bg-white text-orange-500' : 'bg-gray-100 text-gray-400 group-hover:bg-white'}`}>{lesson.chars.length}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 主内容区域 */}
+                    <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+                        
+                        {/* 顶部导航 */}
+                        <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between z-10 shrink-0 border-b border-gray-100 h-14 md:h-16">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-600 p-2 -ml-2 rounded hover:bg-gray-50 active:bg-gray-100">
+                                    <span className="text-xl">☰</span>
+                                </button>
+                                <h1 className="text-lg md:text-2xl font-bold text-gray-800 truncate">
+                                    {currentLesson.title}
+                                </h1>
+                            </div>
+                            <div className="text-xs md:text-sm text-gray-500 hidden sm:block">
+                                {selectedChar ? (mode === 'animate' ? '点击田字格重播演示' : '跟随轮廓书写') : '点击汉字开始学习'}
+                            </div>
+                        </div>
+
+                        {/* 内容展示区 */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-yellow-50/50 scrollbar-thin">
+                            {selectedChar ? (
+                                // 详情模式
+                                <div className="max-w-6xl mx-auto animate-fade-in h-full flex flex-col">
+                                    <button 
+                                        onClick={() => setSelectedChar(null)}
+                                        className="mb-4 flex items-center text-gray-500 hover:text-orange-500 transition-colors font-medium group self-start px-2 py-1 rounded hover:bg-orange-50"
+                                    >
+                                        <span className="text-xl mr-1 group-hover:-translate-x-1 transition-transform">←</span> 返回列表
+                                    </button>
+
+                                    {/* 响应式布局容器：横屏左右分布，竖屏上下分布 */}
+                                    <div className="flex-1 flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start justify-center min-h-0">
+                                        
+                                        {/* 左侧：书写区 (固定比例占用) */}
+                                        <div className="flex flex-col items-center w-full md:w-5/12 lg:w-1/3 shrink-0 h-full max-h-[60vh] md:max-h-full justify-center">
+                                            <HanziWriterComponent 
+                                                char={selectedChar} 
+                                                mode={mode}
+                                            />
+                                            
+                                            {/* 模式切换按钮 */}
+                                            <div className="mt-6 flex w-full max-w-[300px] gap-3 bg-white p-1.5 rounded-full shadow-sm border border-orange-100">
+                                                <button 
+                                                    onClick={() => setMode('animate')}
+                                                    className={`flex-1 py-2 rounded-full font-bold transition-all text-sm md:text-base
+                                                        ${mode === 'animate' 
+                                                            ? 'bg-orange-500 text-white shadow-md transform scale-105' 
+                                                            : 'text-gray-500 hover:bg-gray-50'}`}
+                                                >
+                                                    👀 看演示
+                                                </button>
+                                                <button 
+                                                    onClick={() => setMode('quiz')}
+                                                    className={`flex-1 py-2 rounded-full font-bold transition-all text-sm md:text-base
+                                                        ${mode === 'quiz' 
+                                                            ? 'bg-green-500 text-white shadow-md transform scale-105' 
+                                                            : 'text-gray-500 hover:bg-gray-50'}`}
+                                                >
+                                                    ✏️ 练一练
+                                                </button>
+                                            </div>
+                                            <p className="mt-3 text-gray-400 text-xs text-center hidden md:block">
+                                                {mode === 'animate' ? '提示：点击田字格重播，支持鼠标/触控' : '提示：跟随灰色轮廓书写，写错会自动提示'}
+                                            </p>
+                                        </div>
+
+                                        {/* 右侧：列表区 (在移动端可能显示在下方) */}
+                                        <div className="w-full md:flex-1 h-full flex flex-col min-h-0">
+                                            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-orange-100 h-full flex flex-col overflow-hidden">
+                                                <h3 className="text-base md:text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center shrink-0">
+                                                    <span className="bg-orange-500 w-1 h-4 rounded-full mr-2"></span>
+                                                    本课其他生字 ({currentLesson.chars.length})
+                                                </h3>
+                                                <div className="flex-1 overflow-y-auto scrollbar-thin">
+                                                    <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
+                                                        {currentLesson.chars.map((char, idx) => (
+                                                            <button
+                                                                key={idx}
+                                                                onClick={() => setSelectedChar(char)}
+                                                                className={`aspect-square rounded-xl text-lg md:text-xl font-serif flex items-center justify-center transition-all border
+                                                                    ${char === selectedChar 
+                                                                        ? 'bg-orange-500 text-white shadow-md scale-105 border-orange-600 font-bold ring-2 ring-orange-200' 
+                                                                        : 'bg-gray-50 text-gray-700 hover:bg-orange-50 border-gray-100 hover:border-orange-200'}`}
+                                                            >
+                                                                {char}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                // 列表模式：自适应网格
+                                <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-4 md:gap-6 pb-10">
+                                    {currentLesson.chars.map((char, idx) => (
+                                        <div 
+                                            key={idx}
+                                            onClick={() => setSelectedChar(char)}
+                                            className="char-card bg-white aspect-square rounded-2xl shadow-sm border-2 border-gray-100 hover:border-orange-300 hover:shadow-md cursor-pointer flex flex-col items-center justify-center group relative overflow-hidden"
+                                        >
+                                            <div className="absolute top-0 right-0 w-8 h-8 bg-orange-50 rounded-bl-full -mr-4 -mt-4 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                            <span className="text-3xl sm:text-4xl md:text-5xl font-serif text-gray-800 group-hover:text-orange-600 transition-colors z-10 select-none">
+                                                {char}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
